@@ -93,6 +93,22 @@ const Analytics = () => {
 
   return (
     <Layout title="Analytics" subtitle="Detailed reports and data analysis">
+      {/* Info Message */}
+      {allRecords.length === 0 && (
+        <div className="mb-6 rounded-xl border border-border bg-muted/50 p-4 fade-in">
+          <div className="flex items-start gap-3">
+            <BarChart3 className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Individual Records Not Available</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                ThingSpeak provides aggregated data only. Individual scan records are not available through the Read API. 
+                Please use the Dashboard page to view aggregated statistics and charts.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters Section */}
       <div className="mb-6 rounded-xl border border-border bg-card p-6 fade-in">
         <div className="mb-4 flex items-center gap-2">
@@ -342,7 +358,12 @@ const Analytics = () => {
         {filteredRecords.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Search className="mb-2 h-8 w-8" />
-            <p>No records match your filters</p>
+            <p className="text-sm font-medium">No individual records available</p>
+            <p className="mt-1 text-xs text-center max-w-md">
+              ThingSpeak provides aggregated data only. Individual scan records are not available through the Read API.
+              <br />
+              Please use the Dashboard page to view aggregated statistics and charts.
+            </p>
           </div>
         )}
       </div>

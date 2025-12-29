@@ -14,32 +14,93 @@ import {
   Cookie 
 } from 'lucide-react';
 import {
-  getScanRecords,
-  getTodayStats,
-  getYesterdayStats,
-  getMealWiseData,
-  getHourlyData,
-  getHallDistribution,
-  getWeeklyTrend,
   calculatePercentageChange,
   getRecentScans,
+  // ThingSpeak transformation functions
+  thingSpeakToTodayStats,
+  thingSpeakToMealWiseData,
+  thingSpeakToHourlyData,
+  thingSpeakToHallDistribution,
+  thingSpeakToWeeklyTrend,
 } from '@/lib/data';
+import { useThingSpeak } from '@/hooks/useThingSpeak';
 
 const Dashboard = () => {
-  const [refreshKey, setRefreshKey] = useState(0);
+  // Fetch live data from ThingSpeak
+  const { data: thingSpeakData, allFeeds, loading: thingSpeakLoading, error: thingSpeakError, refetch } = useThingSpeak();
 
   const handleRefresh = useCallback(() => {
-    setRefreshKey(k => k + 1);
-  }, []);
+    // Refetch ThingSpeak data on manual refresh
+    refetch();
+  }, [refetch]);
 
-  const records = useMemo(() => getScanRecords(), [refreshKey]);
-  const todayStats = useMemo(() => getTodayStats(records), [records]);
-  const yesterdayStats = useMemo(() => getYesterdayStats(records), [records]);
-  const mealData = useMemo(() => getMealWiseData(records), [records]);
-  const hourlyData = useMemo(() => getHourlyData(records), [records]);
-  const hallData = useMemo(() => getHallDistribution(records), [records]);
-  const weeklyData = useMemo(() => getWeeklyTrend(records), [records]);
-  const recentScans = useMemo(() => getRecentScans(50), [refreshKey]);
+  // Get empty records for LiveFeed (ThingSpeak doesn't provide individual records)
+  const recentScans = useMemo(() => getRecentScans(50), []);
+
+  // Use ThingSpeak data only - no fallback to mock data
+  const todayStats = useMemo(() => {
+    return thingSpeakToTodayStats(thingSpeakData);
+  }, [thingSpeakData]);
+
+  const yesterdayStats = useMemo(() => {
+    // For yesterday, use the previous feed if available
+    if (allFeeds.length > 1) {
+      const previousFeed = allFeeds[allFeeds.length - 2];
+      return thingSpeakToTodayStats(previousFeed);
+    }
+    // If no previous feed, return zeros
+    return { total: 0, breakfast: 0, lunch: 0, dinner: 0, snacks: 0 };
+  }, [allFeeds]);
+
+  const mealData = useMemo(() => {
+    return thingSpeakToMealWiseData(thingSpeakData);
+  }, [thingSpeakData]);
+
+  const hourlyData = useMemo(() => {
+    return thingSpeakToHourlyData(thingSpeakData);
+  }, [thingSpeakData]);
+
+  const hallData = useMemo(() => {
+    return thingSpeakToHallDistribution(thingSpeakData);
+  }, [thingSpeakData]);
+
+  const weeklyData = useMemo(() => {
+    return thingSpeakToWeeklyTrend(allFeeds);
+  }, [allFeeds]);
+
+  // Show loading state while fetching initial data
+  if (thingSpeakLoading && !thingSpeakData) {
+    return (
+      <Layout title="Dashboard" subtitle="Real-time mess management overview">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+            <p className="text-sm text-muted-foreground">Loading data from ThingSpeak...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show error state if ThingSpeak fails
+  if (thingSpeakError && !thingSpeakData) {
+    return (
+      <Layout title="Dashboard" subtitle="Real-time mess management overview">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="mb-2 text-sm font-medium text-destructive">Failed to load data</p>
+            <p className="mb-4 text-xs text-muted-foreground">{thingSpeakError}</p>
+            <button
+              onClick={refetch}
+              className="rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-accent"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="Dashboard" subtitle="Real-time mess management overview">

@@ -138,7 +138,8 @@ export function LiveFeed({ records, onRefresh }: LiveFeedProps) {
       {filteredRecords.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Search className="mb-2 h-8 w-8" />
-          <p>No records found</p>
+          <p className="text-sm font-medium">No individual records available</p>
+          <p className="mt-1 text-xs">ThingSpeak provides aggregated data only. Individual scan records are not available.</p>
         </div>
       )}
     </div>

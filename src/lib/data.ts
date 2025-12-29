@@ -30,189 +30,9 @@ export interface HallStat {
   percentage: number;
 }
 
-// Helper functions
-const generateUID = (): string => {
-  const num = Math.floor(Math.random() * 7000) + 1;
-  return `UID${num.toString().padStart(4, '0')}`;
-};
-
-const getMealTimeSlot = (meal: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'): { startHour: number; endHour: number } => {
-  switch (meal) {
-    case 'Breakfast':
-      return { startHour: 7, endHour: 9 };
-    case 'Lunch':
-      return { startHour: 12, endHour: 14 };
-    case 'Snacks':
-      return { startHour: 16, endHour: 18 };
-    case 'Dinner':
-      return { startHour: 19, endHour: 21 };
-  }
-};
-
-const formatTime = (hour: number, minute: number): string => {
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-};
-
-const getDayName = (date: Date): string => {
-  return date.toLocaleDateString('en-US', { weekday: 'long' });
-};
-
+// Helper functions (kept for date formatting in transformation functions)
 const formatDate = (date: Date): string => {
   return date.toISOString().split('T')[0];
-};
-
-// Generate realistic scan data
-export const generateScanRecords = (days: number = 30): ScanRecord[] => {
-  const records: ScanRecord[] = [];
-  const today = new Date();
-  
-  for (let d = 0; d < days; d++) {
-    const currentDate = new Date(today);
-    currentDate.setDate(today.getDate() - d);
-    const dayName = getDayName(currentDate);
-    const dateStr = formatDate(currentDate);
-    const isWeekend = dayName === 'Saturday' || dayName === 'Sunday';
-    
-    // Meal distribution with realistic counts
-    const meals: Array<{ type: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'; baseCount: number }> = [
-      { type: 'Breakfast', baseCount: isWeekend ? 400 : 600 },
-      { type: 'Lunch', baseCount: isWeekend ? 800 : 1200 },
-      { type: 'Dinner', baseCount: isWeekend ? 600 : 900 },
-      { type: 'Snacks', baseCount: isWeekend ? 150 : 300 },
-    ];
-    
-    meals.forEach(({ type, baseCount }) => {
-      // Add some randomness to counts
-      const count = baseCount + Math.floor(Math.random() * 100) - 50;
-      const timeSlot = getMealTimeSlot(type);
-      
-      for (let i = 0; i < Math.min(count, 150); i++) { // Cap to avoid too much data
-        const hour = timeSlot.startHour + Math.floor(Math.random() * (timeSlot.endHour - timeSlot.startHour + 1));
-        const minute = Math.floor(Math.random() * 60);
-        const messHall = (Math.floor(Math.random() * 3) + 1) as 1 | 2 | 3;
-        
-        records.push({
-          id: `${dateStr}-${type}-${i}`,
-          uid: generateUID(),
-          date: dateStr,
-          day: dayName,
-          time: formatTime(hour, minute),
-          mealTime: type,
-          messHallNo: messHall,
-          status: Math.random() > 0.02 ? 'success' : 'pending',
-        });
-      }
-    });
-  }
-  
-  return records.sort((a, b) => {
-    const dateCompare = b.date.localeCompare(a.date);
-    if (dateCompare !== 0) return dateCompare;
-    return b.time.localeCompare(a.time);
-  });
-};
-
-// Get today's stats
-export const getTodayStats = (records: ScanRecord[]): { total: number; breakfast: number; lunch: number; dinner: number; snacks: number } => {
-  const today = formatDate(new Date());
-  const todayRecords = records.filter(r => r.date === today);
-  
-  return {
-    total: todayRecords.length,
-    breakfast: todayRecords.filter(r => r.mealTime === 'Breakfast').length,
-    lunch: todayRecords.filter(r => r.mealTime === 'Lunch').length,
-    dinner: todayRecords.filter(r => r.mealTime === 'Dinner').length,
-    snacks: todayRecords.filter(r => r.mealTime === 'Snacks').length,
-  };
-};
-
-// Get yesterday's stats for comparison
-export const getYesterdayStats = (records: ScanRecord[]): { total: number; breakfast: number; lunch: number; dinner: number; snacks: number } => {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = formatDate(yesterday);
-  const yesterdayRecords = records.filter(r => r.date === yesterdayStr);
-  
-  return {
-    total: yesterdayRecords.length,
-    breakfast: yesterdayRecords.filter(r => r.mealTime === 'Breakfast').length,
-    lunch: yesterdayRecords.filter(r => r.mealTime === 'Lunch').length,
-    dinner: yesterdayRecords.filter(r => r.mealTime === 'Dinner').length,
-    snacks: yesterdayRecords.filter(r => r.mealTime === 'Snacks').length,
-  };
-};
-
-// Get meal-wise data for bar chart
-export const getMealWiseData = (records: ScanRecord[]): Array<{ meal: string; count: number }> => {
-  const today = formatDate(new Date());
-  const todayRecords = records.filter(r => r.date === today);
-  
-  return [
-    { meal: 'Breakfast', count: todayRecords.filter(r => r.mealTime === 'Breakfast').length },
-    { meal: 'Lunch', count: todayRecords.filter(r => r.mealTime === 'Lunch').length },
-    { meal: 'Dinner', count: todayRecords.filter(r => r.mealTime === 'Dinner').length },
-    { meal: 'Snacks', count: todayRecords.filter(r => r.mealTime === 'Snacks').length },
-  ];
-};
-
-// Get hourly data for line chart
-export const getHourlyData = (records: ScanRecord[]): HourlyStat[] => {
-  const today = formatDate(new Date());
-  const todayRecords = records.filter(r => r.date === today);
-  
-  const hours: HourlyStat[] = [];
-  for (let h = 7; h <= 21; h++) {
-    const hourStr = h.toString().padStart(2, '0');
-    const count = todayRecords.filter(r => r.time.startsWith(hourStr)).length;
-    hours.push({
-      hour: `${h > 12 ? h - 12 : h}${h >= 12 ? 'PM' : 'AM'}`,
-      count,
-    });
-  }
-  
-  return hours;
-};
-
-// Get hall distribution
-export const getHallDistribution = (records: ScanRecord[]): HallStat[] => {
-  const today = formatDate(new Date());
-  const todayRecords = records.filter(r => r.date === today);
-  const total = todayRecords.length || 1;
-  
-  const halls = [1, 2, 3].map(hall => {
-    const count = todayRecords.filter(r => r.messHallNo === hall).length;
-    return {
-      hall: `Hall ${hall}`,
-      count,
-      percentage: Math.round((count / total) * 100),
-    };
-  });
-  
-  return halls;
-};
-
-// Get weekly trend
-export const getWeeklyTrend = (records: ScanRecord[]): DailyStat[] => {
-  const stats: DailyStat[] = [];
-  const today = new Date();
-  
-  for (let d = 6; d >= 0; d--) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - d);
-    const dateStr = formatDate(date);
-    const dayRecords = records.filter(r => r.date === dateStr);
-    
-    stats.push({
-      date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      total: dayRecords.length,
-      breakfast: dayRecords.filter(r => r.mealTime === 'Breakfast').length,
-      lunch: dayRecords.filter(r => r.mealTime === 'Lunch').length,
-      dinner: dayRecords.filter(r => r.mealTime === 'Dinner').length,
-      snacks: dayRecords.filter(r => r.mealTime === 'Snacks').length,
-    });
-  }
-  
-  return stats;
 };
 
 // Calculate percentage change
@@ -225,22 +45,14 @@ export const calculatePercentageChange = (current: number, previous: number): { 
   };
 };
 
-// Simulated data store
-let scanRecords: ScanRecord[] = generateScanRecords();
-
-export const getScanRecords = (): ScanRecord[] => scanRecords;
-
-export const getRecentScans = (limit: number = 50): ScanRecord[] => {
-  return scanRecords.slice(0, limit);
+// Note: Individual scan records are not available from ThingSpeak API
+// These functions are kept for compatibility but return empty arrays
+export const getScanRecords = (): ScanRecord[] => {
+  return [];
 };
 
-export const addScanRecord = (record: Omit<ScanRecord, 'id'>): ScanRecord => {
-  const newRecord = {
-    ...record,
-    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  };
-  scanRecords = [newRecord, ...scanRecords];
-  return newRecord;
+export const getRecentScans = (limit: number = 50): ScanRecord[] => {
+  return [];
 };
 
 export const filterRecords = (
@@ -268,4 +80,224 @@ export const exportToCSV = (records: ScanRecord[]): string => {
   const rows = records.map(r => [r.uid, r.date, r.day, r.time, r.mealTime, r.messHallNo, r.status]);
   
   return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+};
+
+/**
+ * ThingSpeak Data Transformation Functions
+ * 
+ * ThingSpeak provides aggregated counts in fields:
+ * - field1: Total Attendance (optional, can be sum of meals)
+ * - field2: Breakfast count
+ * - field3: Lunch count
+ * - field4: Dinner count
+ * - field5: Snacks count (optional)
+ * - created_at: Timestamp
+ */
+
+// ThingSpeak Feed type (shared with useThingSpeak hook)
+export interface ThingSpeakFeed {
+  created_at: string;
+  entry_id: number;
+  field1?: string;
+  field2?: string;
+  field3?: string;
+  field4?: string;
+  field5?: string;
+  field6?: string;
+  field7?: string;
+  field8?: string;
+}
+
+/**
+ * Parse a ThingSpeak field value to number
+ * Handles null, undefined, and string numbers
+ */
+const parseFieldValue = (value: string | null | undefined): number => {
+  if (!value || value === 'null' || value === '') return 0;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? 0 : Math.max(0, Math.round(parsed));
+};
+
+/**
+ * Convert ThingSpeak feed to today's stats format
+ * Maps fields to meal counts:
+ * - field1 → total (or sum of meals if not provided)
+ * - field2 → breakfast
+ * - field3 → lunch
+ * - field4 → dinner
+ * - field5 → snacks (optional, defaults to 0)
+ */
+export const thingSpeakToTodayStats = (feed: ThingSpeakFeed | null): { total: number; breakfast: number; lunch: number; dinner: number; snacks: number } => {
+  if (!feed) {
+    return { total: 0, breakfast: 0, lunch: 0, dinner: 0, snacks: 0 };
+  }
+
+  const breakfast = parseFieldValue(feed.field2);
+  const lunch = parseFieldValue(feed.field3);
+  const dinner = parseFieldValue(feed.field4);
+  const snacks = parseFieldValue(feed.field5);
+  
+  // Total can come from field1, or be sum of all meals
+  const totalFromField = parseFieldValue(feed.field1);
+  const total = totalFromField > 0 ? totalFromField : breakfast + lunch + dinner + snacks;
+
+  return {
+    total,
+    breakfast,
+    lunch,
+    dinner,
+    snacks,
+  };
+};
+
+/**
+ * Convert ThingSpeak feed to meal-wise data for bar chart
+ */
+export const thingSpeakToMealWiseData = (feed: ThingSpeakFeed | null): Array<{ meal: string; count: number }> => {
+  if (!feed) {
+    return [
+      { meal: 'Breakfast', count: 0 },
+      { meal: 'Lunch', count: 0 },
+      { meal: 'Dinner', count: 0 },
+      { meal: 'Snacks', count: 0 },
+    ];
+  }
+
+  return [
+    { meal: 'Breakfast', count: parseFieldValue(feed.field2) },
+    { meal: 'Lunch', count: parseFieldValue(feed.field3) },
+    { meal: 'Dinner', count: parseFieldValue(feed.field4) },
+    { meal: 'Snacks', count: parseFieldValue(feed.field5) },
+  ];
+};
+
+/**
+ * Convert ThingSpeak feed to hourly data for line chart
+ * Since ThingSpeak only provides totals, we distribute values across meal hours
+ * This is a simplified approach - in production, you'd want historical hourly data
+ */
+export const thingSpeakToHourlyData = (feed: ThingSpeakFeed | null): HourlyStat[] => {
+  if (!feed) {
+    // Return empty hourly data
+    const hours: HourlyStat[] = [];
+    for (let h = 7; h <= 21; h++) {
+      hours.push({
+        hour: `${h > 12 ? h - 12 : h}${h >= 12 ? 'PM' : 'AM'}`,
+        count: 0,
+      });
+    }
+    return hours;
+  }
+
+  const breakfast = parseFieldValue(feed.field2);
+  const lunch = parseFieldValue(feed.field3);
+  const dinner = parseFieldValue(feed.field4);
+  const snacks = parseFieldValue(feed.field5);
+
+  const hours: HourlyStat[] = [];
+  for (let h = 7; h <= 21; h++) {
+    let count = 0;
+    
+    // Distribute meal counts across their time slots
+    if (h >= 7 && h <= 9) {
+      // Breakfast: 7-9 AM
+      count = Math.round(breakfast / 3);
+    } else if (h >= 12 && h <= 14) {
+      // Lunch: 12-2 PM
+      count = Math.round(lunch / 3);
+    } else if (h >= 16 && h <= 18) {
+      // Snacks: 4-6 PM
+      count = Math.round(snacks / 3);
+    } else if (h >= 19 && h <= 21) {
+      // Dinner: 7-9 PM
+      count = Math.round(dinner / 3);
+    }
+
+    hours.push({
+      hour: `${h > 12 ? h - 12 : h}${h >= 12 ? 'PM' : 'AM'}`,
+      count,
+    });
+  }
+
+  return hours;
+};
+
+/**
+ * Convert ThingSpeak feed to hall distribution
+ * Since ThingSpeak doesn't provide hall breakdown, we distribute evenly
+ * In production, you'd want separate fields for each hall
+ */
+export const thingSpeakToHallDistribution = (feed: ThingSpeakFeed | null): HallStat[] => {
+  if (!feed) {
+    return [
+      { hall: 'Hall 1', count: 0, percentage: 33 },
+      { hall: 'Hall 2', count: 0, percentage: 33 },
+      { hall: 'Hall 3', count: 0, percentage: 34 },
+    ];
+  }
+
+  const total = thingSpeakToTodayStats(feed).total;
+  const perHall = Math.round(total / 3);
+  const remainder = total % 3;
+
+  return [
+    { hall: 'Hall 1', count: perHall + (remainder > 0 ? 1 : 0), percentage: Math.round(((perHall + (remainder > 0 ? 1 : 0)) / total) * 100) || 33 },
+    { hall: 'Hall 2', count: perHall + (remainder > 1 ? 1 : 0), percentage: Math.round(((perHall + (remainder > 1 ? 1 : 0)) / total) * 100) || 33 },
+    { hall: 'Hall 3', count: perHall, percentage: Math.round((perHall / total) * 100) || 34 },
+  ];
+};
+
+/**
+ * Convert ThingSpeak feeds to weekly trend
+ * Uses the latest feed and previous feed for comparison
+ * In production, you'd want to fetch more historical data
+ */
+export const thingSpeakToWeeklyTrend = (feeds: ThingSpeakFeed[]): DailyStat[] => {
+  if (feeds.length === 0) {
+    // Return empty weekly data
+    const stats: DailyStat[] = [];
+    const today = new Date();
+    for (let d = 6; d >= 0; d--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - d);
+      stats.push({
+        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        total: 0,
+        breakfast: 0,
+        lunch: 0,
+        dinner: 0,
+        snacks: 0,
+      });
+    }
+    return stats;
+  }
+
+  // Use latest feed for today, previous feed for yesterday
+  const latestFeed = feeds[feeds.length - 1];
+  const previousFeed = feeds.length > 1 ? feeds[feeds.length - 2] : null;
+
+  const today = new Date();
+  const stats: DailyStat[] = [];
+  
+  for (let d = 6; d >= 0; d--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - d);
+    const isToday = d === 0;
+    const isYesterday = d === 1;
+
+    let feedData = { total: 0, breakfast: 0, lunch: 0, dinner: 0, snacks: 0 };
+    
+    if (isToday && latestFeed) {
+      feedData = thingSpeakToTodayStats(latestFeed);
+    } else if (isYesterday && previousFeed) {
+      feedData = thingSpeakToTodayStats(previousFeed);
+    }
+
+    stats.push({
+      date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      ...feedData,
+    });
+  }
+
+  return stats;
 };
