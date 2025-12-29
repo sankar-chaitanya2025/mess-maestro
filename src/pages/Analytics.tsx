@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { getScanRecords, filterRecords, exportToCSV, type ScanRecord } from '@/lib/data';
+import { filterRecords, exportToCSV, type ScanRecord, thingSpeakToScanRecords } from '@/lib/data';
+import { useThingSpeak } from '@/hooks/useThingSpeak';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const Analytics = () => {
@@ -31,7 +32,13 @@ const Analytics = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  const allRecords = useMemo(() => getScanRecords(), []);
+  // Fetch data from ThingSpeak
+  const { allFeeds, loading, error } = useThingSpeak();
+
+  // Convert ThingSpeak feeds to scan records
+  const allRecords = useMemo(() => {
+    return thingSpeakToScanRecords(allFeeds);
+  }, [allFeeds]);
 
   const filteredRecords = useMemo(() => {
     return filterRecords(allRecords, {
@@ -91,23 +98,36 @@ const Analytics = () => {
     }
   };
 
-  return (
-    <Layout title="Analytics" subtitle="Detailed reports and data analysis">
-      {/* Info Message */}
-      {allRecords.length === 0 && (
-        <div className="mb-6 rounded-xl border border-border bg-muted/50 p-4 fade-in">
-          <div className="flex items-start gap-3">
-            <BarChart3 className="h-5 w-5 text-muted-foreground mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Individual Records Not Available</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                ThingSpeak provides aggregated data only. Individual scan records are not available through the Read API. 
-                Please use the Dashboard page to view aggregated statistics and charts.
-              </p>
-            </div>
+  // Show loading state
+  if (loading && allRecords.length === 0) {
+    return (
+      <Layout title="Analytics" subtitle="Detailed reports and data analysis">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+            <p className="text-sm text-muted-foreground">Loading data from ThingSpeak...</p>
           </div>
         </div>
-      )}
+      </Layout>
+    );
+  }
+
+  // Show error state
+  if (error && allRecords.length === 0) {
+    return (
+      <Layout title="Analytics" subtitle="Detailed reports and data analysis">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="mb-2 text-sm font-medium text-destructive">Failed to load data</p>
+            <p className="text-xs text-muted-foreground">{error}</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout title="Analytics" subtitle="Detailed reports and data analysis">
 
       {/* Filters Section */}
       <div className="mb-6 rounded-xl border border-border bg-card p-6 fade-in">

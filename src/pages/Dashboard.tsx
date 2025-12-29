@@ -15,61 +15,59 @@ import {
 } from 'lucide-react';
 import {
   calculatePercentageChange,
-  getRecentScans,
   // ThingSpeak transformation functions
   thingSpeakToTodayStats,
+  thingSpeakToYesterdayStats,
   thingSpeakToMealWiseData,
   thingSpeakToHourlyData,
   thingSpeakToHallDistribution,
   thingSpeakToWeeklyTrend,
+  thingSpeakToRecentScans,
+  thingSpeakToScanRecords,
 } from '@/lib/data';
 import { useThingSpeak } from '@/hooks/useThingSpeak';
 
 const Dashboard = () => {
   // Fetch live data from ThingSpeak
-  const { data: thingSpeakData, allFeeds, loading: thingSpeakLoading, error: thingSpeakError, refetch } = useThingSpeak();
+  const { allFeeds, loading: thingSpeakLoading, error: thingSpeakError, refetch } = useThingSpeak();
 
   const handleRefresh = useCallback(() => {
     // Refetch ThingSpeak data on manual refresh
     refetch();
   }, [refetch]);
 
-  // Get empty records for LiveFeed (ThingSpeak doesn't provide individual records)
-  const recentScans = useMemo(() => getRecentScans(50), []);
+  // Convert ThingSpeak feeds to scan records and get recent scans
+  const recentScans = useMemo(() => {
+    return thingSpeakToRecentScans(allFeeds, 50);
+  }, [allFeeds]);
 
-  // Use ThingSpeak data only - no fallback to mock data
+  // Use ThingSpeak data only - process all feeds to get stats
   const todayStats = useMemo(() => {
-    return thingSpeakToTodayStats(thingSpeakData);
-  }, [thingSpeakData]);
+    return thingSpeakToTodayStats(allFeeds);
+  }, [allFeeds]);
 
   const yesterdayStats = useMemo(() => {
-    // For yesterday, use the previous feed if available
-    if (allFeeds.length > 1) {
-      const previousFeed = allFeeds[allFeeds.length - 2];
-      return thingSpeakToTodayStats(previousFeed);
-    }
-    // If no previous feed, return zeros
-    return { total: 0, breakfast: 0, lunch: 0, dinner: 0, snacks: 0 };
+    return thingSpeakToYesterdayStats(allFeeds);
   }, [allFeeds]);
 
   const mealData = useMemo(() => {
-    return thingSpeakToMealWiseData(thingSpeakData);
-  }, [thingSpeakData]);
+    return thingSpeakToMealWiseData(allFeeds);
+  }, [allFeeds]);
 
   const hourlyData = useMemo(() => {
-    return thingSpeakToHourlyData(thingSpeakData);
-  }, [thingSpeakData]);
+    return thingSpeakToHourlyData(allFeeds);
+  }, [allFeeds]);
 
   const hallData = useMemo(() => {
-    return thingSpeakToHallDistribution(thingSpeakData);
-  }, [thingSpeakData]);
+    return thingSpeakToHallDistribution(allFeeds);
+  }, [allFeeds]);
 
   const weeklyData = useMemo(() => {
     return thingSpeakToWeeklyTrend(allFeeds);
   }, [allFeeds]);
 
   // Show loading state while fetching initial data
-  if (thingSpeakLoading && !thingSpeakData) {
+  if (thingSpeakLoading && allFeeds.length === 0) {
     return (
       <Layout title="Dashboard" subtitle="Real-time mess management overview">
         <div className="flex items-center justify-center py-12">
@@ -83,7 +81,7 @@ const Dashboard = () => {
   }
 
   // Show error state if ThingSpeak fails
-  if (thingSpeakError && !thingSpeakData) {
+  if (thingSpeakError && allFeeds.length === 0) {
     return (
       <Layout title="Dashboard" subtitle="Real-time mess management overview">
         <div className="flex items-center justify-center py-12">

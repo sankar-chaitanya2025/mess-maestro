@@ -1,8 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { useMemo } from 'react';
 import { 
   LayoutDashboard, 
   BarChart3, 
-  Upload, 
   Settings, 
   Utensils,
   HelpCircle
@@ -13,16 +13,25 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useThingSpeak } from '@/hooks/useThingSpeak';
+import { thingSpeakToScanRecords } from '@/lib/data';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { to: '/upload', icon: Upload, label: 'Upload Data' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 export function Sidebar() {
   const location = useLocation();
+  const { allFeeds } = useThingSpeak();
+
+  // Calculate unique students count from ThingSpeak data
+  const uniqueStudentsCount = useMemo(() => {
+    const records = thingSpeakToScanRecords(allFeeds);
+    const uniqueUIDs = new Set(records.map(record => record.uid));
+    return uniqueUIDs.size;
+  }, [allFeeds]);
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-sidebar">
@@ -67,8 +76,10 @@ export function Sidebar() {
       <div className="border-t border-border p-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Students</span>
-            <span className="text-sm font-semibold text-foreground">7,000</span>
+            <span className="text-xs text-muted-foreground">Unique Students</span>
+            <span className="text-sm font-semibold text-foreground">
+              {uniqueStudentsCount.toLocaleString()}
+            </span>
           </div>
           <Tooltip>
             <TooltipTrigger asChild>

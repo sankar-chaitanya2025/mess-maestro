@@ -51,8 +51,9 @@ export function useThingSpeak() {
       setLoading(true);
       setError(null);
 
+      // Fetch more results to get all scan records (up to 8000 for free tier)
       const response = await fetch(
-        'https://api.thingspeak.com/channels/3214347/feeds.json?api_key=407YRZDLITHI1BGO&results=2'
+        'https://api.thingspeak.com/channels/3214347/feeds.json?api_key=407YRZDLITHI1BGO&results=8000'
       );
 
       if (!response.ok) {
